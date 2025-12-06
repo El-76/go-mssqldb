@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang-sql/civil"
 	"github.com/microsoft/go-mssqldb/msdsn"
 	"github.com/shopspring/decimal"
 )
@@ -252,6 +253,47 @@ func testSelect(t *testing.T, guidConversion bool) {
 
 		if out.Valid {
 			t.Errorf("got back a NullDecimal with value: %t, %s", out.Valid, out.Decimal.String())
+		}
+	})
+	t.Run("scan into civil.Date", func(t *testing.T) {
+		row := conn.QueryRow("SELECT cast('2006-01-02' AS DATE)")
+		var out civil.Date
+		err := row.Scan(&out)
+		if err != nil {
+			t.Error("Scan to civil.Date failed", err.Error())
+			return
+		}
+
+		d := civil.Date{Year: 2006, Month: 1, Day: 2}
+		if out != d {
+			t.Errorf("got back a civil.Date with value: %s", out.String())
+		}
+	})
+	t.Run("scan into NullDate", func(t *testing.T) {
+		row := conn.QueryRow("SELECT cast('2006-01-02' AS DATE))")
+		var out NullDate
+		err := row.Scan(&out)
+		if err != nil {
+			t.Error("Scan to NullDate failed", err.Error())
+			return
+		}
+
+		nd := NullDate{Date: civil.Date{Year: 2006, Month: 1, Day: 2}, Valid: true}
+		if out.Date != nd.Date || !out.Valid {
+			t.Errorf("got back a NullDate with value: %t, %s", out.Valid, out.Date.String())
+		}
+	})
+	t.Run("scan into NullDate from NULL", func(t *testing.T) {
+		row := conn.QueryRow("SELECT NULL")
+		var out NullDate
+		err := row.Scan(&out)
+		if err != nil {
+			t.Error("Scan to NullDate failed", err.Error())
+			return
+		}
+
+		if out.Valid {
+			t.Errorf("got back a NullDate with value: %t, %s", out.Valid, out.Date.String())
 		}
 	})
 }
